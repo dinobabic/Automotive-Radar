@@ -36,4 +36,14 @@ class RadarDataset(Dataset):
         with open(self.radar_files[idx], 'rb') as file:
             radar_frame = pkl.load(file)
 
+        # ego vehicle's motion compensation
+        ego_vel = radar_frame['ego_vel']
+        dynamic_doppler = np.zeros(radar_frame['radar_pts'].shape[0], dtype=np.float32)
+        for i, point in enumerate(radar_frame['radar_pts']):
+            azimuth = point[3] # azimuth angle
+            h = ego_vel[0] * np.sin(np.deg2rad(azimuth)) + ego_vel[1] * np.cos(np.deg2rad(azimuth)) # radial component of ego vehicle's velocity
+            # remove ego vehicle's radial velocity component from point's doppler to get dynamic doppler
+            dynamic_doppler[i] = point[6]+h
+        
+        radar_frame['dynamic_doppler'] = dynamic_doppler
         return radar_frame
