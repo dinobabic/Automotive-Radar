@@ -82,23 +82,95 @@ def read_lidar_pcl(lidar_file):
     valid_mask = ~np.isnan(points[:, 0])
     return points[valid_mask, :3]  
 
-def visualize_lidar(points):
+def read_radar_pcl(radar_file):
+    points = np.fromfile(radar_file, dtype=np.float32).reshape(-1, 5)
+    valid_mask = ~np.isnan(points[:, 0])
+    return points  
+
+def visualize_pcl(points, labels: list[Label], Tr_velo_to_cam, Tr_radar_to_velo=None):
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points)
     
-    if len(points) > 0:
-        z_min, z_max = points[:, 2].min(), points[:, 2].max()
-        colors = np.zeros((len(points), 3))
-        if z_max > z_min:
-            normalized_z = (points[:, 2] - z_min) / (z_max - z_min)
-            colors[:, 0] = normalized_z  
-            colors[:, 2] = 1 - normalized_z
-        else:
-            colors[:, 2] = 1  
-        pcd.colors = o3d.utility.Vector3dVector(colors)
+    colors = np.zeros(points.shape, dtype=np.float32)
+    colors[:, 0] = 1.0
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+
+    # Collect all geometries to visualize
+    geometries = [pcd]
     
+    # Compute inverse transformation (camera to velodyne)
+    if Tr_radar_to_velo is not None:
+        Tr_velo_to_cam = np.vstack([Tr_velo_to_cam, np.array([0, 0, 0, 1])])
+        Tr_radar_to_velo = np.vstack([Tr_radar_to_velo, np.array([0, 0, 0, 1])])
+        Tr_velo_to_cam = Tr_velo_to_cam @ Tr_radar_to_velo
+    
+    R_velo_to_cam = Tr_velo_to_cam[:3, :3]
+    t_velo_to_cam = Tr_velo_to_cam[:3, 3]
+
+    Tr_cam_to_velo = np.eye(4)
+    Tr_cam_to_velo[:3, :3] = R_velo_to_cam.T
+    Tr_cam_to_velo[:3, 3] = -R_velo_to_cam.T @ t_velo_to_cam
+    
+    # Draw bounding boxes for each label
+    for label in labels:
+        x_corners = [label.length/2, label.length/2, -label.length/2, -label.length/2,
+                        label.length/2, label.length/2, -label.length/2, -label.length/2]
+        y_corners = [0, 0, 0, 0, -label.height, -label.height, -label.height, -label.height]
+        z_corners = [label.width/2, -label.width/2, -label.width/2, label.width/2,
+                        label.width/2, -label.width/2, -label.width/2, label.width/2]
+        corners_3d = np.array([x_corners, y_corners, z_corners])
+        R = np.array([[np.cos(label.rotation_y), 0, np.sin(label.rotation_y)],
+                        [0, 1, 0],
+                        [-np.sin(label.rotation_y), 0, np.cos(label.rotation_y)]])
+        corners_3d = R @ corners_3d
+        corners_3d[0] += label.x
+        corners_3d[1] += label.y
+        corners_3d[2] += label.z
+        
+        # Transform from camera coordinates to velodyne coordinates
+        # Add homogeneous coordinate for transformation
+        ones = np.ones((1, corners_3d.shape[1]))
+        corners_3d_homo = np.vstack([corners_3d, ones])
+        corners_3d_velo_homo = Tr_cam_to_velo @ corners_3d_homo
+        corners_3d = corners_3d_velo_homo[:3, :]
+        
+        # Create lines for the bounding box
+        lines = [[0,1], [1,2], [2,3], [3,0], 
+                    [4,5], [5,6], [6,7], [7,4], 
+                    [0,4], [1,5], [2,6], [3,7]]
+        
+        line_set = o3d.geometry.LineSet()
+        line_set.points = o3d.utility.Vector3dVector(corners_3d.T)
+        line_set.lines = o3d.utility.Vector2iVector(lines)
+        line_set.colors = o3d.utility.Vector3dVector([[0, 1, 0] for _ in lines])
+        geometries.append(line_set)
+    
+    # Add coordinate frame for reference
     mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=5)
-    o3d.visualization.draw_geometries([pcd, mesh_frame])
+    geometries.append(mesh_frame)
+    
+    # Visualize all geometries together with custom camera view
+    # Camera looking down positive Z-axis from the origin
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(window_name='LiDAR Point Cloud with Labels')
+    
+    for geom in geometries:
+        vis.add_geometry(geom)
+    
+    # Set camera parameters
+    ctr = vis.get_view_control()
+    # Set camera to look down the positive X-axis (forward direction)
+    # front: direction from camera to lookat point
+    # lookat: point the camera is looking at (origin)
+    # up: which direction is "up"
+    ctr.set_front([-0.1, 0, 0])      # Look in positive X direction (forward)
+    ctr.set_lookat([0, 0, 0])     # Look at origin
+    ctr.set_up([0, 0, 1])         # Z-axis points up
+    ctr.set_zoom(0.5)             # Adjust zoom level
+    
+    vis.run()
+    vis.destroy_window()
+
 
 # possible subfolders:
     # - calib
@@ -120,14 +192,19 @@ calibration_files.sort()
 lidar_files = glob.glob(f'{root_dir}/velodyne/*')  
 lidar_files.sort()
 
+radar_files = glob.glob(f'{root_dir}/radar/*')  
+radar_files.sort()
+
 idx = 0
 img = cv.imread(image_files[idx], cv.IMREAD_COLOR)
 labels = read_labels(label_files[idx])
 calib = read_calibration(calibration_files[idx])
 lidar_points = read_lidar_pcl(lidar_files[idx])
+radar_points = read_radar_pcl(radar_files[idx])
 
 img = draw_labels_on_image(img, labels)
-visualize_lidar(lidar_points)
+visualize_pcl(lidar_points, labels, calib['Tr_velo_to_cam'])
+visualize_pcl(radar_points[:, :3], labels, calib['Tr_velo_to_cam'], calib['Tr_radar_to_velo'])
 
 cv.imshow('Image', img)
 cv.waitKey(0)

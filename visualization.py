@@ -11,7 +11,7 @@ def visualize_radar_pcl(radar_frame: dict):
     fig, ax = plt.subplots()
     
     ax.scatter(radar_pcl[:,0][pts_dynamic], radar_pcl[:,1][pts_dynamic], color='blue', s=15) # dynamic points
-    ax.scatter(radar_pcl[:,0][~pts_dynamic], radar_pcl[:,1][~pts_dynamic], color='orange', s=15) # dynamic points
+    ax.scatter(radar_pcl[:,0][~pts_dynamic], radar_pcl[:,1][~pts_dynamic], color='orange', s=15) # static points
     
     for i in range(radar_frame['targets_bboxes'].shape[0]):
         # draw a bounding box around target
@@ -52,7 +52,7 @@ def visualize_radar_pcl_aggregated_standard(radar_dataset, start_idx, aggregatio
     idx = start_idx + 1
     while (True):
         next_timestamp = radar_dataset[idx]['timestamp']
-        print(f'init timestamp: {init_timestamp}, next timestamp: {next_timestamp}')
+        #print(f'init timestamp: {init_timestamp}, next timestamp: {next_timestamp}')
         if next_timestamp - init_timestamp < aggregation_time_window:
             idx += 1
         else:
@@ -72,8 +72,8 @@ def visualize_radar_pcl_aggregated_standard(radar_dataset, start_idx, aggregatio
         
         radar_pts = transform_points_to_current_frame(radar_pcl[:,:3], T_ego_local2global_k, T_ego_global2local_current)
 
-        ax.scatter(radar_pts[:,0][pts_dynamic], radar_pts[:,1][pts_dynamic], color='blue', s=15) # dynamic points
-        ax.scatter(radar_pts[:,0][~pts_dynamic], radar_pts[:,1][~pts_dynamic], color='orange', s=15) # dynamic points
+        ax.scatter(radar_pts[:,0][pts_dynamic], radar_pts[:,1][pts_dynamic], color='blue', s=2) # dynamic points
+        ax.scatter(radar_pts[:,0][~pts_dynamic], radar_pts[:,1][~pts_dynamic], color='orange', s=2) # dynamic points
 
     
     # draw a bounding boxes using current (last) frame targets
