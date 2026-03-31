@@ -1,7 +1,7 @@
 import numpy as np
 import argparse
 
-from dataset import RadarDataset
+from dataset import RadarDataset, RadarBEVDataset
 from visualization import *
 
 root_radar_dir = '/Volumes/T7/lrrr_sim_data/radar_data'
@@ -17,11 +17,13 @@ def main():
     
     radar_dataset = RadarDataset(args.root_radar_dir)
         
-    visualize_radar_pcl(radar_dataset[0])
-    visualize_radar_pcl_aggregated_standard(radar_dataset, 0, 1.5)
-    visualize_radar_pcl_aggregated_fixed(radar_dataset, 0, 10)
+    #visualize_radar_pcl(radar_dataset[850])
+    #visualize_radar_pcl_aggregated_standard(radar_dataset, 840, 0.5)
+    #visualize_radar_pcl_aggregated_fixed(radar_dataset, 0, 15)
     #visualize_radar_pcl_aggregated_dopp_drive(radar_dataset, current_frame)
     
+    dataset = RadarBEVDataset(radar_dataset, aggregate=True)
+    radar_bev_train_example = dataset[10]
 
 
 if __name__ == "__main__": 
