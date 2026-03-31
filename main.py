@@ -17,8 +17,8 @@ def main():
     
     radar_dataset = RadarDataset(args.root_radar_dir)
         
-    visualize_radar_pcl(radar_dataset[10])
-    #visualize_radar_pcl_aggregated_standard(radar_dataset, 0, 0.5)
+    #visualize_radar_pcl(radar_dataset[850])
+    #visualize_radar_pcl_aggregated_standard(radar_dataset, 840, 0.5)
     #visualize_radar_pcl_aggregated_fixed(radar_dataset, 0, 15)
     #visualize_radar_pcl_aggregated_dopp_drive(radar_dataset, current_frame)
     
