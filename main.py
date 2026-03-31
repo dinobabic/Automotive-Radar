@@ -3,9 +3,16 @@ import argparse
 
 from dataset import RadarDataset, RadarBEVDataset
 from visualization import *
+from radar_net import NVRadarNet
+
+from torch.utils.data import DataLoader
 
 root_radar_dir = '/Volumes/T7/lrrr_sim_data/radar_data'
 root_image_dir = '/Volumes/T7/lrrr_sim_data/image_data'
+
+device = 'cpu'
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="Automotive Radar Program")
@@ -23,7 +30,11 @@ def main():
     #visualize_radar_pcl_aggregated_dopp_drive(radar_dataset, current_frame)
     
     dataset = RadarBEVDataset(radar_dataset, aggregate=True)
-    radar_bev_train_example = dataset[10]
+    loader = DataLoader(dataset, batch_size=1, shuffle=True)
+
+    model = NVRadarNet(in_channels=5, num_classes=2)
+    data, labels = next(iter(loader))
+    model(data)
 
 
 if __name__ == "__main__": 

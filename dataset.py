@@ -61,7 +61,7 @@ class RadarBEVDataset(Dataset):
         self.aggregation_time = aggregation_time
 
     def __len__(self):
-        return len(self.radar_files)
+        return len(self.radar_dataset)
     
     def __getitem__(self, idx):
         radar_frame = self.radar_dataset[idx]
@@ -212,7 +212,7 @@ class RadarBEVDataset(Dataset):
             count = np.sum(cell_count[valid_ys, valid_xs])
             
             if count >= 4:
-                valid_target_bboxes.append(bbox)    
+                valid_target_bboxes.append([cx, cy, ex, ey, np.sin(np.deg2rad(yaw)), np.cos(np.deg2rad(yaw))])    
 
         
         valid_target_bboxes = np.array(valid_target_bboxes) 
