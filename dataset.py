@@ -221,13 +221,13 @@ class RadarBEVDataset(Dataset):
         # fig, ax = plt.subplots()
         # plt.imshow(bev[0], cmap='hot', interpolation='nearest')
         # for i in range(valid_target_bboxes.shape[0]):
-        #     cx, cy, ex, ey, yaw = valid_target_bboxes[i]
+        #     cx, cy, ex, ey, sin_theta, cos_theta = valid_target_bboxes[i]
 
         #     rect = plt.Rectangle(
         #         (cx - ex/2, cy - ey/2), 
         #         ex, 
         #         ey, 
-        #         angle=yaw, 
+        #         angle=np.rad2deg(np.arctan2(sin_theta, cos_theta)), 
         #         rotation_point='center',
         #         edgecolor='red', 
         #         facecolor='none'
@@ -237,7 +237,89 @@ class RadarBEVDataset(Dataset):
 
         # plt.show()
 
-        return torch.tensor(bev, dtype=torch.float32), torch.tensor(valid_target_bboxes, dtype=torch.float32)
+        H_out, W_out = 208, 208
+        
+        seg_target = np.zeros((H_out, W_out), dtype=np.int32)
+        reg_target = np.zeros((6, H_out, W_out), dtype=np.float32)
+        reg_mask = np.zeros((H_out, W_out), dtype=np.int32)
+
+
+        for target_bbox in valid_target_bboxes:
+            cx, cy, ex, ey, sin_theta, cos_theta = target_bbox 
+
+            scale_x = W_out / bev_width
+            scale_y = H_out / bev_height
+
+            cx = cx * scale_x
+            cy = cy * scale_y
+            ex = ex * scale_x
+            ey = ey * scale_y
+            yaw = np.arctan2(sin_theta, cos_theta)
+
+            x_min_bbox = int(max(cx - ex/2, 0))
+            x_max_bbox = int(min(cx + ex/2, W_out - 1))
+            y_min_bbox = int(max(cy - ey/2, 0))
+            y_max_bbox = int(min(cy + ey/2, H_out - 1))
+
+            ys, xs = np.meshgrid(
+                np.arange(y_min_bbox, y_max_bbox + 1),
+                np.arange(x_min_bbox, x_max_bbox + 1),
+                indexing='ij'
+            )
+
+            xs = xs.reshape(-1)
+            ys = ys.reshape(-1) 
+
+            rect = plt.Rectangle(
+                (cx - ex/2, cy - ey/2), 
+                ex, 
+                ey, 
+                angle=np.rad2deg(yaw), 
+                rotation_point='center',
+                edgecolor='red', 
+                facecolor='none'
+            )
+
+            poly = rect.get_path().transformed(rect.get_transform())
+            pts = np.column_stack([xs, ys])
+            mask = poly.contains_points(pts)
+
+            valid_xs = xs[mask].astype(int)
+            valid_ys = ys[mask].astype(int)
+
+            seg_target[valid_ys, valid_xs] = 1
+
+            for x, y in zip(valid_xs, valid_ys):
+                x_p = x + 0.5
+                y_p = y + 0.5
+
+                dx = cx - x_p
+                dy = cy - y_p
+
+                reg_target[0, y, x] = dx
+                reg_target[1, y, x] = dy
+                reg_target[2, y, x] = ex
+                reg_target[3, y, x] = ey
+                reg_target[4, y, x] = sin_theta
+                reg_target[5, y, x] = cos_theta
+                reg_mask[y, x] = 1
+
+        # visualization
+        # fig, ax = plt.subplots()
+        # plt.imshow(seg_target, cmap='gray', interpolation='nearest')
+        # plt.show()
+
+        # fig, ax = plt.subplots()
+        # plt.imshow(reg_mask, cmap='gray', interpolation='nearest')
+        # plt.show()
+
+        # fig, ax = plt.subplots()
+        # plt.imshow(reg_target[0], cmap='gray', interpolation='nearest')
+        # plt.show()
+
+
+        return (torch.tensor(bev, dtype=torch.float32), torch.tensor(seg_target, dtype=torch.int64), 
+                torch.tensor(reg_target, dtype=torch.float32), torch.tensor(reg_mask, dtype=torch.int64))
 
 
         

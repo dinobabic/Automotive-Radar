@@ -61,25 +61,33 @@ class NVRadarNet(nn.Module):
         self.encoder = Encoder(in_channels)
 
         # class segmentation head - for each pixel predicts class probabilites
-        self.class_seg_upsample = nn.ConvTranspose2d(1024, 256, kernel_size=4, stride=4)
-        self.class_seg = nn.Conv2d(256, num_classes, kernel_size=1, stride=1)
+        self.class_seg_upsample_1 = nn.ConvTranspose2d(1024, 256, kernel_size=4, stride=4)
+        self.class_seg_upsample_2 = nn.ConvTranspose2d(256, 64, kernel_size=4, stride=4)
+        self.class_seg = nn.Conv2d(64, num_classes, kernel_size=1, stride=1)
 
         # regression head
-        self.reg_upsample = nn.ConvTranspose2d(
-            1024, 256, kernel_size=4, stride=4
-        )
-        self.reg_out = nn.Conv2d(256, 6, kernel_size=1)
+        self.reg_upsample_1 = nn.ConvTranspose2d(1024, 256, kernel_size=4, stride=4)
+        self.reg_upsample_2 = nn.ConvTranspose2d(256, 64, kernel_size=4, stride=4)
+        self.reg_out = nn.Conv2d(64, 6, kernel_size=1)
 
     def forward(self, x):
         x5, skips = self.encoder(x)
         
-        seg = self.class_seg_upsample(x5)
-        skip = F.interpolate(skips[2], size=seg.shape[-2:], mode='bilinear', align_corners=False)
-        seg = seg + skip
+        seg = self.class_seg_upsample_1(x5)
+        skip1 = F.interpolate(skips[2], size=seg.shape[-2:], mode='bilinear', align_corners=False)
+        seg = seg + skip1
+
+        seg = self.class_seg_upsample_2(seg)
+        skip2 = F.interpolate(skips[0], size=seg.shape[-2:], mode='bilinear', align_corners=False)
+        seg = seg + skip2
         seg = self.class_seg(seg)
 
-        reg = self.reg_upsample(x5)
-        reg = reg + skip
+
+        reg = self.reg_upsample_1(x5)
+        reg = reg + skip1
+
+        reg = self.reg_upsample_2(reg)
+        reg = reg + skip2
         reg = self.reg_out(reg)
 
         return seg, reg
