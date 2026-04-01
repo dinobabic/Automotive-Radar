@@ -18,7 +18,7 @@ from sklearn.cluster import DBSCAN
 root_radar_dir = '/Volumes/T7/lrrr_sim_data/radar_data'
 root_image_dir = '/Volumes/T7/lrrr_sim_data/image_data'
 
-device = 'cuda:2'
+device = 'cpu'
 
 def test(root_radar_dir):
     radar_dataset = RadarDataset(root_radar_dir)
@@ -27,7 +27,7 @@ def test(root_radar_dir):
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     model = NVRadarNet(in_channels=5, num_classes=2).to(device)
-    model.load_state_dict(torch.load("nv_radar_net_epoch_43.pth"))
+    model.load_state_dict(torch.load("nv_radar_net_epoch_43.pth", map_location='cpu'))
     model.eval()
 
     bev_images, seg_target, reg_target, reg_mask = dataset[10]
