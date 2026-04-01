@@ -30,7 +30,8 @@ class RadarDataset(Dataset):
     def __init__(self, root_radar_dir, train=True):
         super().__init__()
 
-        self.radar_files = glob.glob(f'{root_radar_dir}/train/*') if train else glob.glob(f'{root_radar_dir}/test/*')
+        #self.radar_files = glob.glob(f'{root_radar_dir}/train/*') if train else glob.glob(f'{root_radar_dir}/test/*')
+        self.radar_files = glob.glob(f'{root_radar_dir}/*')
         self.radar_files.sort()
 
     def __len__(self):
@@ -128,11 +129,16 @@ class RadarBEVDataset(Dataset):
         # normalization
         aggregated_radar_pcl[:, 0] = (aggregated_radar_pcl[:, 0] - x_min) / (x_max - x_min) * (bev_width - 1)
         aggregated_radar_pcl[:, 1] = (aggregated_radar_pcl[:, 1] - y_min) / (y_max - y_min) * (bev_height - 1)
-        aggregated_radar_pcl[:, 3] = np.clip((aggregated_radar_pcl[:, 3] + 180) / 360, 0, 1)
+        # Azimuth: ensure angle is in [-180, 180] before normalizing to [0, 1]
+        aggregated_radar_pcl[:, 3] = np.arctan2(np.sin(np.deg2rad(aggregated_radar_pcl[:, 3])), 
+                                                 np.cos(np.deg2rad(aggregated_radar_pcl[:, 3])))
+        aggregated_radar_pcl[:, 3] = (aggregated_radar_pcl[:, 3] + np.pi) / (2 * np.pi)  # Now in [0, 1]
         aggregated_radar_pcl[:, 4] = np.clip((aggregated_radar_pcl[:, 4] + 90) / 180, 0, 1) 
         aggregated_radar_pcl[:, 6] = np.clip((aggregated_radar_pcl[:, 6] + 100) / 200, 0, 1)
-        aggregated_radar_pcl[:, 7] = np.clip(aggregated_radar_pcl[:, 7] / 100, 0, 1) 
-        aggregated_radar_pcl[:, 8] = (init_timestamp - aggregated_radar_pcl[:, 8]) / (init_timestamp - last_timestamp) 
+        aggregated_radar_pcl[:, 7] = np.clip(aggregated_radar_pcl[:, 7] / 100, 0, 1)
+        # Clamp timestamp to [0, 1] to avoid NaN from division by very small or zero denominators
+        time_diff = init_timestamp - last_timestamp
+        aggregated_radar_pcl[:, 8] = np.clip((init_timestamp - aggregated_radar_pcl[:, 8]) / (time_diff + 1e-6), 0, 1) 
 
         # aggregate points in each cell 
         for i in range(aggregated_radar_pcl.shape[0]):
@@ -218,24 +224,24 @@ class RadarBEVDataset(Dataset):
         valid_target_bboxes = np.array(valid_target_bboxes) 
 
         # visualization
-        # fig, ax = plt.subplots()
-        # plt.imshow(bev[0], cmap='hot', interpolation='nearest')
-        # for i in range(valid_target_bboxes.shape[0]):
-        #     cx, cy, ex, ey, sin_theta, cos_theta = valid_target_bboxes[i]
+        fig, ax = plt.subplots()
+        plt.imshow(bev[0], cmap='hot', interpolation='nearest')
+        for i in range(valid_target_bboxes.shape[0]):
+            cx, cy, ex, ey, sin_theta, cos_theta = valid_target_bboxes[i]
 
-        #     rect = plt.Rectangle(
-        #         (cx - ex/2, cy - ey/2), 
-        #         ex, 
-        #         ey, 
-        #         angle=np.rad2deg(np.arctan2(sin_theta, cos_theta)), 
-        #         rotation_point='center',
-        #         edgecolor='red', 
-        #         facecolor='none'
-        #     )
+            rect = plt.Rectangle(
+                (cx - ex/2, cy - ey/2), 
+                ex, 
+                ey, 
+                angle=np.rad2deg(np.arctan2(sin_theta, cos_theta)), 
+                rotation_point='center',
+                edgecolor='red', 
+                facecolor='none'
+            )
 
-        #     ax.add_patch(rect)
+            ax.add_patch(rect)
 
-        # plt.show()
+        plt.savefig("bev_visualization.png")
 
         H_out, W_out = 208, 208
         
@@ -305,9 +311,9 @@ class RadarBEVDataset(Dataset):
                 reg_mask[y, x] = 1
 
         # visualization
-        # fig, ax = plt.subplots()
-        # plt.imshow(seg_target, cmap='gray', interpolation='nearest')
-        # plt.show()
+        fig, ax = plt.subplots()
+        plt.imshow(seg_target, cmap='gray', interpolation='nearest')
+        plt.savefig("segmentation_target.png")
 
         # fig, ax = plt.subplots()
         # plt.imshow(reg_mask, cmap='gray', interpolation='nearest')
