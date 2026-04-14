@@ -217,31 +217,32 @@ class RadarBEVDataset(Dataset):
             valid_ys = ys[mask].astype(int)
             count = np.sum(cell_count[valid_ys, valid_xs])
             
-            #if count >= 4:
-            valid_target_bboxes.append([cx, cy, ex, ey, np.sin(np.deg2rad(yaw)), np.cos(np.deg2rad(yaw))])    
+            if count >= 4:
+                valid_target_bboxes.append([cx, cy, ex, ey, np.sin(np.deg2rad(yaw)), np.cos(np.deg2rad(yaw))])    
 
         
         valid_target_bboxes = np.array(valid_target_bboxes) 
 
         # visualization
-        # fig, ax = plt.subplots()
-        # plt.imshow(bev[0], cmap='hot', interpolation='nearest')
-        # for i in range(valid_target_bboxes.shape[0]):
-        #     cx, cy, ex, ey, sin_theta, cos_theta = valid_target_bboxes[i]
+        fig, ax = plt.subplots()
+        plt.imshow(bev[0], cmap='hot', interpolation='nearest')
+        for i in range(valid_target_bboxes.shape[0]):
+            cx, cy, ex, ey, sin_theta, cos_theta = valid_target_bboxes[i]
 
-        #     rect = plt.Rectangle(
-        #         (cx - ex/2, cy - ey/2), 
-        #         ex, 
-        #         ey, 
-        #         angle=np.rad2deg(np.arctan2(sin_theta, cos_theta)), 
-        #         rotation_point='center',
-        #         edgecolor='red', 
-        #         facecolor='none'
-        #     )
+            rect = plt.Rectangle(
+                (cx - ex/2, cy - ey/2), 
+                ex, 
+                ey, 
+                angle=np.rad2deg(np.arctan2(sin_theta, cos_theta)), 
+                rotation_point='center',
+                edgecolor='red', 
+                facecolor='none'
+            )
 
-        #     ax.add_patch(rect)
-        # plt.title("BEV Visualization with Valid Target BBoxes") 
-        # plt.savefig("bev_visualization.png")
+            ax.add_patch(rect)
+        plt.title("BEV Visualization with Valid Target BBoxes") 
+        plt.savefig("experiments/visualization_results/bev_visualization.png")
+        plt.close()
 
         H_out, W_out = 208, 208
         
@@ -311,10 +312,11 @@ class RadarBEVDataset(Dataset):
                 reg_mask[y, x] = 1
 
         # visualization
-        # fig, ax = plt.subplots()
-        # plt.imshow(seg_target, cmap='gray', interpolation='nearest')
-        # plt.title("Segmentation Target")
-        # plt.savefig("segmentation_target.png")
+        fig, ax = plt.subplots()
+        plt.imshow(seg_target, cmap='gray', interpolation='nearest')
+        plt.title("Segmentation Target")
+        plt.savefig("experiments/visualization_results/segmentation_target.png")
+        plt.close()
 
         return (torch.tensor(bev, dtype=torch.float32), torch.tensor(seg_target, dtype=torch.int64), 
                 torch.tensor(reg_target, dtype=torch.float32), torch.tensor(reg_mask, dtype=torch.int64))

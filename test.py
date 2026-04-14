@@ -13,13 +13,13 @@ import torch.nn.functional as F
 
 from sklearn.cluster import DBSCAN
 
-def visualize_radar_detection_model_results(dataset_dir, device, example_idx=10, save_dir="./experiments/visualization_results"):
+def visualize_radar_detection_model_results(dataset_dir, model_path, device, example_idx=10, save_dir="./experiments/visualization_results"):
     radar_dataset = RadarDataset(dataset_dir)
 
     dataset = RadarBEVDataset(radar_dataset, aggregate=True)
 
     model = NVRadarNet(in_channels=5, num_classes=2).to(device)
-    model.load_state_dict(torch.load("nv_radar_net_epoch_43.pth", map_location='cpu'))
+    model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
 
     bev_images, seg_target, reg_target, reg_mask = dataset[example_idx]
