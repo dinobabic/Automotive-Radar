@@ -70,6 +70,10 @@ class NVRadarNet(nn.Module):
         self.reg_upsample_2 = nn.ConvTranspose2d(256, 64, kernel_size=4, stride=4)
         self.reg_out = nn.Conv2d(64, 6, kernel_size=1)
 
+        # bayesian learned weights for loss balancing
+        self.log_var_seg = nn.Parameter(torch.zeros(1))
+        self.log_var_reg = nn.Parameter(torch.tensor([2.5]))
+
     def forward(self, x):
         x5, skips = self.encoder(x)
         

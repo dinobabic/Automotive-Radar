@@ -240,8 +240,9 @@ class RadarBEVDataset(Dataset):
             )
 
             ax.add_patch(rect)
-
-        plt.savefig("bev_visualization.png")
+        plt.title("BEV Visualization with Valid Target BBoxes") 
+        plt.savefig("experiments/visualization_results/bev_visualization.png")
+        plt.close()
 
         H_out, W_out = 208, 208
         
@@ -313,16 +314,9 @@ class RadarBEVDataset(Dataset):
         # visualization
         fig, ax = plt.subplots()
         plt.imshow(seg_target, cmap='gray', interpolation='nearest')
-        plt.savefig("segmentation_target.png")
-
-        # fig, ax = plt.subplots()
-        # plt.imshow(reg_mask, cmap='gray', interpolation='nearest')
-        # plt.show()
-
-        # fig, ax = plt.subplots()
-        # plt.imshow(reg_target[0], cmap='gray', interpolation='nearest')
-        # plt.show()
-
+        plt.title("Segmentation Target")
+        plt.savefig("experiments/visualization_results/segmentation_target.png")
+        plt.close()
 
         return (torch.tensor(bev, dtype=torch.float32), torch.tensor(seg_target, dtype=torch.int64), 
                 torch.tensor(reg_target, dtype=torch.float32), torch.tensor(reg_mask, dtype=torch.int64))
